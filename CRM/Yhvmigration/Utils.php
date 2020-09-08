@@ -4,19 +4,19 @@
 
 		public static function getCustomFields() {
 			$fields = [
-				'RegisterDate' => 'RegisterDate',
+				'RegisterDate' => 'Registration_Date',
 				'PoliceCheckDate' => 'PoliceCheckDate',
-				'TBtest' => 'TBtest',
+				'TBtest' => 'TB_Test',
 				'ChineseName' => 'Chinese_Name',
-				'Year of Birth' => 'Birth_Year',
-				'SpeakEn' => 'Speak_English',
-				'SpeakCan' => 'Speak_Cantonese',
-				'SpeakMan' => 'Speak_Mandarin',
-				'WriteChinese' => 'Write_Chinese',
-				'WriteEng' => 'Write_English',
-				'ChineseTyping' => 'Chinese_Typing',
-				'EngTyping' => 'English_Typing',
-				'Car' => 'Car',
+				'YearOfBirth' => 'Birth_Year',
+				'SpeakEn' => 'Speak_English_',
+				'SpeakCan' => 'Speak_Cantonese_',
+				'SpeakMan' => 'Speak_Mandarin_',
+				'WriteChinese' => 'Write_Chinese_',
+				'WriteEng' => 'Write_English_',
+				'ChineseTyping' => 'Chinese_Typing_',
+				'EngTyping' => 'English_Typing_',
+				'Car' => 'Car_',
 			];
 			return $fields;
 		}
@@ -41,18 +41,53 @@
 
 		public static function createEmergencyContact($id, $fields) {
 			if (!empty($fields['first_name']) || !empty($fields['last_name']) || !empty($fields['email'])) {
-				$contact = civicrm_api3('Contact', 'create', $fields);
-				if (!empty($contact['id'])) {
-					// Create relationship with volunteer.
-					$params = [
-						'contact_id_a' => $id,
-						'contact_id_b' => $contact['id'],
-						'relationship_type_id' => ucfirst($fields['relation']),
-					];
-					self::deleteEntities('Relationship', $params);
-					civicrm_api3('Relationship', 'create', $params);
+					$dedupeParams = CRM_Dedupe_Finder::formatParams($fields, 'Individual');
+					$dedupeParams['check_permission'] = 0;
+					$dupes = CRM_Dedupe_Finder::dupesByParams($dedupeParams, 'Individual', NULL, [], EM_DEDUPE_RULE);
+					$fields['contact_id'] = CRM_Utils_Array::value('0', $dupes, NULL);
+					$contact = civicrm_api3('Contact', 'create', $fields);
+					$conA = $id;
+					$conB = $contact['id'];
+					// Create emergency contact phone.
+					if (!empty($fields['phone'])) {
+							CRM_Yhvmigration_Utils::deleteEntities('Phone', ['contact_id' => $contact['id']]);
+							civicrm_api3('Phone', 'create', ['contact_id' => $contact['id'], 'phone' => $fields['phone']]);
+					}
+					if (!empty($fields['relation'])) {
+							$relationId = CRM_Core_DAO::singleValueQuery("SELECT id FROM civicrm_relationship_type WHERE name_a_b = %1", [1 => [$fields['relation'], 'String']]);
+					}
+					else {
+							$relationId = CRM_Core_DAO::singleValueQuery("SELECT id FROM civicrm_relationship_type WHERE name_a_b = 'Relative 親戚'");
+					}
+					if (!empty($fields['relation']) && strpos($fields['relation'], 'Grandparent') !== false) {
+							// We need to switch the type.
+							$relationId = CRM_Core_DAO::singleValueQuery("SELECT id FROM civicrm_relationship_type WHERE name_b_a = %1", [1 => [$fields['relation'], 'String']]);
+							$conA = $contact['id'];
+							$conB = $id;
+					}
+					if (!empty($conA) && !empty($conB)) {
+						// Create relationship with volunteer.
+						$params = [
+							 'contact_id_a' => $conA,
+								'contact_id_b' => $conB,
+								'relationship_type_id' => $relationId,
+						];
+						try {
+								civicrm_api3('Relationship', 'create', $params);
+						}
+						catch (CiviCRM_API3_Exception $e) {
+								$errorMessage = $e->getMessage();
+      		$errorCode = $e->getErrorCode();
+      		$errorData = $e->getExtraParams();
+      		$error = [
+										'error_message' => $errorMessage,
+										'error_code' => $errorCode,
+										'error_data' => $errorData,
+								];
+      		CRM_Core_Error::debug_var('Error in processing relationship with emergency contact:', $error);
+						}
+					}
 				}
-			}
 		}
 
 		public static function getChineseName($field) {
@@ -77,6 +112,10 @@
 			$entities = civicrm_api3($entity, 'get', $params)['values'];
 			foreach ($entities as $toDelete) {
 				civicrm_api3($entity, 'delete', ['id' => $toDelete['id']]);
+				if ($entity == 'Relationship') {
+					// We delete the related contact as well.
+					civicrm_api3('Contact', 'delete', ['id' => $toDelete['contact_id_b']]);
+				}
 			}
 		}
 
@@ -91,23 +130,24 @@
 
 
 		public static function addMultiValue($fields, $name, $volunteer, $contact, $isText) {
-			$options = [];
-			foreach ($fields as $option) {
-				if (!empty($contact[$option])) {
-					$options[] = $contact[$option];
+				$options = [];
+				foreach ($fields as $option) {
+						if (!empty($contact[$option])) {
+								$options[] = trim($contact[$option]);
+						}
 				}
-			}
-			if ($isText) {
-				$options = implode(',', $options);
-			}
-			if (!empty($options)) {
-				$customFieldID = CRM_Yhvmigration_Utils::getCustomFieldID($name);
-				civicrm_api3('Contact', 'create', [
-					'id' => $volunteer['id'],
-					'contact_type' => 'Individual',
-					'custom_' . $customFieldID => $options,
-				]);
-			}
+				if ($isText) {
+						$options = trim(implode(',', $options));
+				}
+				if (!empty($options)) {
+						$customFieldID = CRM_Yhvmigration_Utils::getCustomFieldID($name);
+		
+						civicrm_api3('Contact', 'create', [
+							'id' => $volunteer['id'],
+							'contact_type' => 'Individual',
+							$customFieldID => $options,
+						]);
+				}
 		}
 
 		public static function getCustomFieldID($name) {

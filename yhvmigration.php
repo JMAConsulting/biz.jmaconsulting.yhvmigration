@@ -1,6 +1,9 @@
 <?php
 
+	ini_set('max_execution_time', 0);
+
 require_once 'yhvmigration.civix.php';
+require_once 'yhvmigration.constants.php';
 // phpcs:disable
 use CRM_Yhvmigration_ExtensionUtil as E;
 // phpcs:enable

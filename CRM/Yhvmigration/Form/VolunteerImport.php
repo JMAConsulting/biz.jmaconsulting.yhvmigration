@@ -11,7 +11,7 @@ class CRM_Yhvmigration_Form_VolunteerImport extends CRM_Core_Form {
   const QUEUE_NAME = 'vol-pull';
   const END_URL    = 'civicrm/volunteerimport';
   const END_PARAMS = 'state=done';
-  const VOLUNTEER_BATCH = 2;
+  const VOLUNTEER_BATCH = 500;
 
   public function buildQuickForm() {
     $fields = [

@@ -3,7 +3,63 @@
 class CRM_Yhvmigration_BAO_VolunteerImport {
 
   public static function syncContacts($ctx, $start, $end) {
-    $vols = CRM_Core_DAO::executeQuery("SELECT * FROM volunteers LIMIT $start, $end")->fetchAll();
+				$query = "SELECT
+      `FileNum`,
+						`FirstName`,
+						`LastName`,
+						`ChineseName`,
+						`RegisterDate`,
+						`Year of Birth` AS `YearOfBirth`,
+						`TBtest`,
+						`PoliceCheckDate`,
+						`Email`,
+						`Mobile`,
+						`HomePhone`,
+						`BusinessPhone`,
+						`BusinessExt`,
+						`Sex`,
+						`Street`,
+						`City`,
+						`PostalCode`,
+						`EmCon1LastName`,
+						`EmCon1FirstName`,
+						`This person is my1` AS `rel1`,
+						`EmConPhone1`,
+						`EmConEmail1`,
+						`EmCon2LastName`,
+						`EmCon2FirstName`,
+						`This person is my2` AS `rel2`,
+						`EmConPhone2`,
+						`EmConEmail2`,
+						`SpeakEng`,
+						`SpeakCant`,
+						`SpeakMand`,
+						`WriteChinese`,
+						`WriteEng`,
+						`ChineseTyping`,
+						`EngTyping`,
+						`OtherLanguage1`,
+						`OtherLanguage2`,
+						`OtherLanguage3`,
+						`OtherLanguage(not-on-list)1`,
+						`OtherLanguage(not-on-list)2`,
+						`Car`,
+						`Area of Education #1` AS `area1`,
+						`Area of Education #2` AS `area2`,
+						`Area of Education #3` AS `area3`,
+						`AreaOfEducation(NotOnList)1`,
+						`AreaOfEducation(NotOnList)2`,
+						`AreaOfEducation(NotOnList)3`,
+						`Profession/Qualifications/Skills1`,
+						`Profession/Qualifications/Skills2`,
+						`Profession/Qualifications/Skills3`,
+						`Profession/Qualifications/Skills4`,
+						`Profession/Qualifications/Skills(NotOnList)1`,
+						`Profession/Qualifications/Skills(NotOnList)2`,
+						`Profession/Qualifications/Skills(NotOnList)3`,
+						`Profession/Qualifications/Skills(NotOnList)4`
+      FROM volunteers LIMIT $start, $end";
+	   $vols = CRM_Core_DAO::executeQuery($query)->fetchAll();
     if (empty($vols)) {
         return;
     }
@@ -13,6 +69,9 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
   }
 
   public static function createVolunteer($contact) {
+  		if (empty($contact['ChineseName']) && (strpos($contact['FirstName'], '?') !== false || strpos($contact['LastName'], '?') !== false)) {
+  				return $contact['FileNum'];
+				}
     $params = [
       'contact_type' => 'Individual',
       'first_name' => $contact['FirstName'],
@@ -38,60 +97,60 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
       $volunteer = civicrm_api3('Contact', 'create', $params);
 
       // Create Phone and Address
-	    self::createPhoneAndAddress($volunteer, $contact);
+	    	self::createPhoneAndAddress($volunteer, $contact);
 
       // Do more volunteer specific stuff.
-	    self::createVolunteerSpecifics($volunteer, $contact);
+	    	self::createVolunteerSpecifics($volunteer, $contact);
 
-	    // Emergency Contacts.
-	    self::createEmergencyContacts($volunteer, $contact);
+	    	// Emergency Contacts.
+	    	self::createEmergencyContacts($volunteer, $contact);
+	    
+	    	// Add languages.
+	    	$languageFields = [
+	    		'OtherLanguage1',
+		    	'OtherLanguage2',
+		    	'OtherLanguage3',
+	    	];
+	    	CRM_Yhvmigration_Utils::addMultiValue($languageFields, LANGUAGES, $volunteer, $contact, FALSE);
 
-	    // Add languages.
-	    $languageFields = [
-	    	'OtherLanguage1',
-		    'OtherLanguage2',
-		    'OtherLanguage3',
-	    ];
-	    CRM_Yhvmigration_Utils::addMultiValue($languageFields, LANGUAGES, $volunteer, $contact, FALSE);
+	    	$languageNotOnList = [
+		    	'OtherLanguage(not-on-list)1',
+		    	'OtherLanguage(not-on-list)2',
+	    	];
+	    	CRM_Yhvmigration_Utils::addMultiValue($languageNotOnList, OTHER_LANGUAGE, $volunteer, $contact, TRUE);
 
-	    $languageNotOnList = [
-		    'OtherLanguage(not-on-list)1',
-		    'OtherLanguage(not-on-list)2',
-	    ];
-	    CRM_Yhvmigration_Utils::addMultiValue($languageNotOnList, OTHER_LANGUAGE, $volunteer, $contact, TRUE);
+	    	// Add areas of education.
+	    	$areas = [
+	    		'area1',
+		    	'area2',
+		    	'area3',
+	    	];
+	    	CRM_Yhvmigration_Utils::addMultiValue($areas, AREA_OF_EDUCATION, $volunteer, $contact, FALSE);
 
-	    // Add areas of education.
-	    $areas = [
-	    	'Area of Education #1',
-		    'Area of Education #2',
-		    'Area of Education #3',
-	    ];
-	    CRM_Yhvmigration_Utils::addMultiValue($areas, AREA_OF_EDUCATION, $volunteer, $contact, FALSE);
-
-	    $areasNotOnList = [
-		    'AreaOfEducation(NotOnList)1',
-		    'AreaOfEducation(NotOnList)2',
-		    'AreaOfEducation(NotOnList)3',
-		    'Other Area of Education',
-	    ];
-	    CRM_Yhvmigration_Utils::addMultiValue($areasNotOnList, OTHER_AREAS, $volunteer, $contact, TRUE);
-
-	    // Add professions and skills.
-	    $skills = [
-		    'Profession/Qualifications/Skills1',
-		    'Profession/Qualifications/Skills2',
-		    'Profession/Qualifications/Skills3',
-		    'Profession/Qualifications/Skills4',
-	    ];
-	    CRM_Yhvmigration_Utils::addMultiValue($skills, SKILLS, $volunteer, $contact, FALSE);
-
-	    $otherSkills = [
-		    'Profession/Qualifications/Skills(NotOnList)1',
-		    'Profession/Qualifications/Skills(NotOnList)2',
-		    'Profession/Qualifications/Skills(NotOnList)3',
-		    'Profession/Qualifications/Skills(NotOnList)4',
-	    ];
-	    CRM_Yhvmigration_Utils::addMultiValue($otherSkills, OTHER_SKILLS, $volunteer, $contact, TRUE);
+	    	$areasNotOnList = [
+		    	'AreaOfEducation(NotOnList)1',
+		    	'AreaOfEducation(NotOnList)2',
+		    	'AreaOfEducation(NotOnList)3',
+		    	'Other Area of Education',
+	    	];
+	    	CRM_Yhvmigration_Utils::addMultiValue($areasNotOnList, OTHER_AREAS, $volunteer, $contact, TRUE);
+		
+	    	// Add professions and skills.
+						$skills = [
+					  'Profession/Qualifications/Skills1',
+							'Profession/Qualifications/Skills2',
+							'Profession/Qualifications/Skills3',
+							'Profession/Qualifications/Skills4',
+						];
+						CRM_Yhvmigration_Utils::addMultiValue($skills, SKILLS, $volunteer, $contact, FALSE);
+		
+						$otherSkills = [
+							'Profession/Qualifications/Skills(NotOnList)1',
+							'Profession/Qualifications/Skills(NotOnList)2',
+							'Profession/Qualifications/Skills(NotOnList)3',
+							'Profession/Qualifications/Skills(NotOnList)4',
+						];
+						CRM_Yhvmigration_Utils::addMultiValue($otherSkills, OTHER_SKILLS, $volunteer, $contact, TRUE);
     }
     catch (CiviCRM_API3_Exception $e) {
       // Handle error here.
@@ -137,19 +196,19 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
 		  // Delete all phones associated with the contact first.
 		  CRM_Yhvmigration_Utils::deleteEntities('Phone', ['contact_id' => $volunteer['id'], 'phone_type_id' => 'Mobile']);
 		  // Now, create the phone.
-		  civicrm_api3('Phone', 'create', ['contact_id' => $volunteer['id'], 'phone' => $contact['Mobile']]);
+		  civicrm_api3('Phone', 'create', ['contact_id' => $volunteer['id'], 'phone' => $contact['Mobile'], 'phone_type_id' => 'Mobile']);
 	  }
 	  if (!empty($contact['HomePhone'])) {
 		  // Delete all phones associated with the contact first.
-		  CRM_Yhvmigration_Utils::deleteEntities('Phone', ['contact_id' => $volunteer['id'], 'phone_type_id' => 'Phone']);
+		  CRM_Yhvmigration_Utils::deleteEntities('Phone', ['contact_id' => $volunteer['id'], 'phone_type_id' => 'Phone', 'location_type_id' => 'Home']);
 		  // Now, create the phone.
-		  civicrm_api3('Phone', 'create', ['contact_id' => $volunteer['id'], 'phone' => $contact['Mobile']]);
+		  civicrm_api3('Phone', 'create', ['contact_id' => $volunteer['id'], 'phone' => $contact['HomePhone'], 'location_type_id' => 'Home', 'phone_type_id' => 'Phone',]);
 	  }
 	  if (!empty($contact['BusinessPhone'])) {
 		  // Delete all phones associated with the contact first.
-		  CRM_Yhvmigration_Utils::deleteEntities('Phone', ['contact_id' => $volunteer['id'], 'phone_type_id' => 'Work']);
+		  CRM_Yhvmigration_Utils::deleteEntities('Phone', ['contact_id' => $volunteer['id'], 'phone_type_id' => 'Phone', 'location_type_id' => 'Work']);
 		  // Now, create the phone.
-		  civicrm_api3('Phone', 'create', ['contact_id' => $volunteer['id'], 'phone' => $contact['Work'], 'phone_ext' => $contact['BusinessExt']]);
+		  civicrm_api3('Phone', 'create', ['contact_id' => $volunteer['id'], 'phone' => $contact['BusinessPhone'], 'phone_ext' => $contact['BusinessExt'], 'phone_type_id' => 'Phone', 'location_type_id' => 'Work']);
 	  }
   }
 
@@ -159,7 +218,8 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
   		'last_name' => $contact['EmCon1LastName'],
 		  'email' => $contact['EmConEmail1'],
 		  'phone' => $contact['EmConPhone1'],
-		  'relation' => $contact['This person is my1'],
+		  'relation' => $contact['rel1'],
+		  'contact_type' => 'Individual',
 	  ];
   	CRM_Yhvmigration_Utils::createEmergencyContact($volunteer['id'], $emergency1Fields);
 
@@ -168,28 +228,29 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
 		  'last_name' => $contact['EmCon2LastName'],
 		  'email' => $contact['EmConEmail2'],
 		  'phone' => $contact['EmConPhone2'],
-		  'relation' => $contact['This person is my2'],
+		  'relation' => $contact['rel2'],
+		  'contact_type' => 'Individual',
 	  ];
 	  CRM_Yhvmigration_Utils::createEmergencyContact($volunteer['id'], $emergency2Fields);
   }
 
   public static function createVolunteerSpecifics($volunteer, $contact) {
-		$fields = CRM_Yhvmigration_Utils::getCustomFields();
-		$params = ['contact_type' => 'Individual', 'contact_id' => $volunteer['id']];
-		foreach ($fields as $dbField => $customField) {
-			$custom = CRM_Yhvmigration_Utils::getCustomFieldID($customField);
-			if (empty($contact[$dbField])) {
-				continue;
-			}
-			elseif ($dbField == 'ChineseName') {
-				$params[$custom] = CRM_Yhvmigration_Utils::getChineseName($contact[$dbField], $dbField);
-			}
-			else {
-				if (in_array($contact[$dbField], ['TRUE', 'FALSE'])) {
-					$params[$custom] = CRM_Yhvmigration_Utils::getYesNo($contact[$dbField]);
+			$fields = CRM_Yhvmigration_Utils::getCustomFields();
+			$params = ['contact_type' => 'Individual', 'contact_id' => $volunteer['id']];
+			foreach ($fields as $dbField => $customField) {
+				$custom = CRM_Yhvmigration_Utils::getCustomFieldID($customField);
+				if (empty($contact[$dbField])) {
+					continue;
+				}
+				elseif ($dbField == 'ChineseName') {
+					$params[$custom] = CRM_Yhvmigration_Utils::getChineseName($contact[$dbField], $dbField);
 				}
 				else {
-					$params[$custom] = $contact[$dbField];
+					if (in_array($contact[$dbField], ['TRUE', 'FALSE'])) {
+						$params[$custom] = CRM_Yhvmigration_Utils::getYesNo($contact[$dbField]);
+					}
+					else {
+						$params[$custom] = $contact[$dbField];
 				}
 			}
 		}
