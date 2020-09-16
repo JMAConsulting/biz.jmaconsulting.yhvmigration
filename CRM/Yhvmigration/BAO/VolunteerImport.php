@@ -79,7 +79,7 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
       'email' => $contact['Email'],
     ];
     // We dupe with the external identifier.
-	  $existingContact = civicrm_api3('Contact', 'get', ['external_identifier' => $contact['FileNum']]);
+	  	$existingContact = civicrm_api3('Contact', 'get', ['external_identifier' => $contact['FileNum']]);
     if (!empty($existingContact['id'])) {
       $params['contact_id'] = $existingContact['id'];
     }
@@ -270,5 +270,106 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
 		  CRM_Core_Error::debug_var('Error in processing information:', $error);
 	  }
   }
+		
+		public static function syncActivities($ctx, $start, $end, $activityType) {
+  		if ($activityType == 'Volunteer Work Hours') {
+  				$table = 'WorkHours';
+				}
+				if ($activityType == 'Volunteer Award') {
+						$table = 'PreviousAwardWinners';
+				}
+  		$items = CRM_Core_DAO::executeQuery("SELECT * FROM $table LIMIT $start, $end")->fetchAll();
+  		foreach ($items as $item) {
+  				if ($activityType == 'Volunteer Award') {
+  						self::createVolunteerAward($item, $activityType);
+						}
+				  if ($activityType == 'Volunteer Work Hours') {
+						  self::createWorkHours($item, $activityType);
+				  }
+				}
+		}
+		
+		public static function createWorkHours($workHour, $activityType) {
+  		if (empty($workHour) || empty($workHour['FileNumber'])) {
+  				continue;
+				}
+  		// Do a lookup to match the fileNum.
+				$existingContact = civicrm_api3('Contact', 'get', ['external_identifier' => $workHour['FileNumber']]);
+				if (!empty($existingContact['id'])) {
+						$cid = $existingContact['id'];
+				}
+				$activityParams = [
+						'target_contact_id' => $cid,
+						'source_contact_id' => $cid,
+						'activity_type_id' => $activityType,
+				];
+				
+				// Add custom fields.
+				$customFields = [
+						'Hours' => 'Work_Hours',
+						'Year' => 'Year',
+				],
+				foreach ($customFields as $db => $name) {
+						$custom = CRM_Yhvrequestform_Utils::getCustomFieldID($name, WORKHOUR_CUSTOM);
+						$activityParams[$custom] = $workHour[$db];
+				}
+				
+				try {
+						civicrm_api3('Activity', 'create', $activityParams);
+				}
+				catch (CiviCRM_API3_Exception $e) {
+						// Handle error here.
+						$errorMessage = $e->getMessage();
+						$errorCode = $e->getErrorCode();
+						$errorData = $e->getExtraParams();
+						$error = [
+								'error_message' => $errorMessage,
+								'error_code' => $errorCode,
+								'error_data' => $errorData,
+						];
+						CRM_Core_Error::debug_var('Error in processing workhour information:', $error);
+				}
+		}
+
+		public static function createVolunteerAward($award, $activityType) {
+				if (empty($award) || empty($award['File'])) {
+						continue;
+				}
+				// Do a lookup to match the fileNum.
+				$existingContact = civicrm_api3('Contact', 'get', ['external_identifier' => $award['File']]);
+				if (!empty($existingContact['id'])) {
+						$cid = $existingContact['id'];
+				}
+				$activityParams = [
+						'target_contact_id' => $cid,
+						'source_contact_id' => $cid,
+						'activity_type_id' => $activityType,
+				];
+
+				// Add custom fields.
+				$customFields = [
+						'Year' => 'Year',
+				],
+				foreach ($customFields as $db => $name) {
+						$custom = CRM_Yhvrequestform_Utils::getCustomFieldID($name, AWARD_CUSTOM);
+						$activityParams[$custom] = $award[$db];
+				}
+
+				try {
+						civicrm_api3('Activity', 'create', $activityParams);
+				}
+				catch (CiviCRM_API3_Exception $e) {
+						// Handle error here.
+						$errorMessage = $e->getMessage();
+						$errorCode = $e->getErrorCode();
+						$errorData = $e->getExtraParams();
+						$error = [
+								'error_message' => $errorMessage,
+								'error_code' => $errorCode,
+								'error_data' => $errorData,
+						];
+						CRM_Core_Error::debug_var('Error in processing award information:', $error);
+				}
+		}
 
 }

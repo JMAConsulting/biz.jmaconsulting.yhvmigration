@@ -149,8 +149,8 @@
 						]);
 				}
 		}
-
-		public static function getCustomFieldID($name) {
-			return 'custom_' . CRM_Core_DAO::singleValueQuery("SELECT id FROM civicrm_custom_field WHERE name = %1", [1 => [$name, 'String']]);
+		
+		public static function getCustomFieldID($name, $groupId = VOLUNTEER_INFO_CUSTOM) {
+				return 'custom_' . CRM_Core_DAO::singleValueQuery("SELECT id FROM civicrm_custom_field WHERE name = %1 AND custom_group_id = %2", [1 => [$name, 'String'], 2 => [$groupId, 'Integer']]);
 		}
 	}

@@ -12,6 +12,7 @@ class CRM_Yhvmigration_Upgrader extends CRM_Yhvmigration_Upgrader_Base {
   /**
    * Example: Run an external SQL script when the module is installed.
    *
+			* /
   public function install() {
     $this->executeSqlFile('sql/myinstall.sql');
   }
@@ -24,15 +25,7 @@ class CRM_Yhvmigration_Upgrader extends CRM_Yhvmigration_Upgrader_Base {
    * created during the installation (e.g., a setting or a managed entity), do
    * so here to avoid order of operation problems.
    */
-  // public function postInstall() {
-  //  $customFieldId = civicrm_api3('CustomField', 'getvalue', array(
-  //    'return' => array("id"),
-  //    'name' => "customFieldCreatedViaManagedHook",
-  //  ));
-  //  civicrm_api3('Setting', 'create', array(
-  //    'myWeirdFieldSetting' => array('id' => $customFieldId, 'weirdness' => 1),
-  //  ));
-  // }
+
 
   /**
    * Example: Run an external SQL script when the module is uninstalled.
@@ -92,7 +85,6 @@ class CRM_Yhvmigration_Upgrader extends CRM_Yhvmigration_Upgrader_Base {
 	   }
 	   return TRUE;
 	 }
-
 
   /**
    * Example: Run an external SQL script.
