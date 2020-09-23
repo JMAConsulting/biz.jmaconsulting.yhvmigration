@@ -112,6 +112,7 @@ class CRM_Yhvmigration_Form_VolunteerImport extends CRM_Core_Form {
 								"Adding work hours from Yee Hong to CiviCRM... "
 						));
 				}
+		  return CRM_Queue_Task::TASK_SUCCESS;
 		}
 
 		public static function migrateWinners(CRM_Queue_TaskContext $ctx) {
@@ -126,6 +127,7 @@ class CRM_Yhvmigration_Form_VolunteerImport extends CRM_Core_Form {
 								"Adding work hours from Yee Hong to CiviCRM... "
 						));
 				}
+				return CRM_Queue_Task::TASK_SUCCESS;
 		}
 
   public static function createUpdateContacts(CRM_Queue_TaskContext $ctx, $start, $end) {
