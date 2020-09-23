@@ -105,7 +105,7 @@ class CRM_Yhvmigration_Form_VolunteerImport extends CRM_Core_Form {
 				for ($i=1; $i<=$count; $i+=self::VOLUNTEER_BATCH) {
 						$end = $i + self::VOLUNTEER_BATCH;
 						$start = $i - 1;
-						$activityType = 'Volunteer Work Hours';
+						$activityType = 'Volunteer';
 						$ctx->queue->createItem( new CRM_Queue_Task(
 								array('CRM_Yhvmigration_Form_VolunteerImport', 'createActivities'),
 								[$start, $end, $activityType],

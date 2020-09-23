@@ -272,7 +272,7 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
   }
 		
 		public static function syncActivities($ctx, $start, $end, $activityType) {
-  		if ($activityType == 'Volunteer Work Hours') {
+  		if ($activityType == 'Volunteer') {
   				$table = 'WorkHours';
 				}
 				if ($activityType == 'Volunteer Award') {
@@ -283,7 +283,7 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
   				if ($activityType == 'Volunteer Award') {
   						self::createVolunteerAward($item, $activityType);
 						}
-				  if ($activityType == 'Volunteer Work Hours') {
+				  if ($activityType == 'Volunteer') {
 						  self::createWorkHours($item, $activityType);
 				  }
 				}
@@ -307,11 +307,16 @@ class CRM_Yhvmigration_BAO_VolunteerImport {
 				// Add custom fields.
 				$customFields = [
 						'Hours' => 'Work_Hours',
-						'Year' => 'Year',
+						'Year' => 'Month',
 				],
 				foreach ($customFields as $db => $name) {
 						$custom = CRM_Yhvrequestform_Utils::getCustomFieldID($name, WORKHOUR_CUSTOM);
-						$activityParams[$custom] = $workHour[$db];
+						if ($name == 'Month') {
+								$activityParams[$custom] = date('Y-m-d', strtotime($workHour['Year'] . '-' . $workHour['month'] . '-01'));
+						}
+						else {
+								$activityParams[$custom] = $workHour[$db];
+						}
 				}
 				
 				try {
