@@ -16,8 +16,8 @@ class CRM_Yhvmigration_Form_VolunteerImport extends CRM_Core_Form {
   public function buildQuickForm() {
     $fields = [
       'volunteers' => ts('Volunteers'),
-						'work_hours' => ts('Work Hours'),
-		    'awards' => ts('Previous Winners'),
+      'work_hours' => ts('Work Hours'),
+      'awards' => ts('Previous Winners'),
     ];
     foreach ($fields as $field => $title) {
       $this->addElement('checkbox', $field, $title);
@@ -54,8 +54,8 @@ class CRM_Yhvmigration_Form_VolunteerImport extends CRM_Core_Form {
   public static function getRunner($submitValues) {
     $syncProcess = array(
       'volunteers' => 'migrateVolunteers',
-						'work_hours' => 'migrateWorkHours',
-		    'awards' => 'migrateWinners',
+      'work_hours' => 'migrateWorkHours',
+      'awards' => 'migrateWinners',
     );
     // Setup the Queue
     $queue = CRM_Queue_Service::singleton()->create(array(
@@ -99,46 +99,46 @@ class CRM_Yhvmigration_Form_VolunteerImport extends CRM_Core_Form {
 
     return CRM_Queue_Task::TASK_SUCCESS;
   }
-  
-  public static function migrateWorkHours(CRM_Queue_TaskContext $ctx) {
-  		$count = CRM_Core_DAO::singleValueQuery("SELECT COUNT(*) FROM WorkHours");
-				for ($i=1; $i<=$count; $i+=self::VOLUNTEER_BATCH) {
-						$end = $i + self::VOLUNTEER_BATCH;
-						$start = $i - 1;
-						$activityType = 'Volunteer';
-						$ctx->queue->createItem( new CRM_Queue_Task(
-								array('CRM_Yhvmigration_Form_VolunteerImport', 'createActivities'),
-								[$start, $end, $activityType],
-								"Adding work hours from Yee Hong to CiviCRM... "
-						));
-				}
-		  return CRM_Queue_Task::TASK_SUCCESS;
-		}
 
-		public static function migrateWinners(CRM_Queue_TaskContext $ctx) {
-				$count = CRM_Core_DAO::singleValueQuery("SELECT COUNT(*) FROM PreviousAwardWinners");
-				for ($i=1; $i<=$count; $i+=self::VOLUNTEER_BATCH) {
-						$end = $i + self::VOLUNTEER_BATCH;
-						$start = $i - 1;
-						$activityType = 'Volunteer Award';
-						$ctx->queue->createItem( new CRM_Queue_Task(
-								array('CRM_Yhvmigration_Form_VolunteerImport', 'createActivities'),
-								[$start, $end, $activityType],
-								"Adding work hours from Yee Hong to CiviCRM... "
-						));
-				}
-				return CRM_Queue_Task::TASK_SUCCESS;
-		}
+  public static function migrateWorkHours(CRM_Queue_TaskContext $ctx) {
+    $count = CRM_Core_DAO::singleValueQuery("SELECT COUNT(*) FROM volunteer_hours");
+    for ($i=1; $i<=$count; $i+=self::VOLUNTEER_BATCH) {
+      $end = $i + self::VOLUNTEER_BATCH;
+      $start = $i - 1;
+      $activityType = 'Volunteer';
+      $ctx->queue->createItem( new CRM_Queue_Task(
+        array('CRM_Yhvmigration_Form_VolunteerImport', 'createActivities'),
+        [$start, $end, $activityType],
+        "Adding work hours from Yee Hong to CiviCRM... "
+      ));
+    }
+    return CRM_Queue_Task::TASK_SUCCESS;
+  }
+
+  public static function migrateWinners(CRM_Queue_TaskContext $ctx) {
+    $count = CRM_Core_DAO::singleValueQuery("SELECT COUNT(*) FROM volunteer_awards");
+    for ($i=1; $i<=$count; $i+=self::VOLUNTEER_BATCH) {
+      $end = $i + self::VOLUNTEER_BATCH;
+      $start = $i - 1;
+      $activityType = 'Volunteer Award';
+      $ctx->queue->createItem( new CRM_Queue_Task(
+        array('CRM_Yhvmigration_Form_VolunteerImport', 'createActivities'),
+        [$start, $end, $activityType],
+        "Adding volunteer awards from Yee Hong to CiviCRM... "
+      ));
+    }
+    return CRM_Queue_Task::TASK_SUCCESS;
+  }
 
   public static function createUpdateContacts(CRM_Queue_TaskContext $ctx, $start, $end) {
     CRM_Yhvmigration_BAO_VolunteerImport::syncContacts($ctx, $start, $end);
     return CRM_Queue_Task::TASK_SUCCESS;
   }
-  
+
   public static function createActivities(CRM_Queue_TaskContext $ctx, $start, $end, $activityType) {
-				CRM_Yhvmigration_BAO_VolunteerImport::syncActivities($ctx, $start, $end, $activityType);
-				return CRM_Queue_Task::TASK_SUCCESS;
-		}
+    CRM_Yhvmigration_BAO_VolunteerImport::syncActivities($ctx, $start, $end, $activityType);
+    return CRM_Queue_Task::TASK_SUCCESS;
+  }
 
   /**
    * Get the fields/elements defined in this form.
